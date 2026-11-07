@@ -6,7 +6,7 @@ from .models import Adapter
 
 _VPN_HINTS = (
     "wireguard", "wintun", "warp", "openvpn", "tap-", "tunnel", "tun ",
-    "radmin vpn", "happ", "tailscale", "zerotier", "protonvpn", "nordlynx",
+    "radmin vpn", "vpn", "happ", "tailscale", "zerotier", "protonvpn", "nordlynx",
 )
 
 

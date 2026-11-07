@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 from netscope import __version__
 from netscope.core.diagnose import diagnose
 from netscope.monitor_ui import MonitorPanel
+from netscope.investigate_ui import InvestigationPanel
 
 
 STYLES = """
@@ -31,9 +32,9 @@ QLabel#tagline { color: #98a7ba; font-size: 10pt; }
 QGroupBox { background: #182233; border: 1px solid #29374d; border-radius: 12px;
             margin-top: 13px; padding: 12px 10px 9px 10px; font-weight: 600; }
 QGroupBox::title { subcontrol-origin: margin; left: 14px; padding: 0 7px; color: #dae5f5; }
-QLineEdit { background: #101827; border: 1px solid #36475d; border-radius: 7px;
+QLineEdit, QSpinBox { background: #101827; border: 1px solid #36475d; border-radius: 7px;
             padding: 8px 10px; selection-background-color: #2f8f88; }
-QLineEdit:focus { border: 1px solid #69e6ce; }
+QLineEdit:focus, QSpinBox:focus { border: 1px solid #69e6ce; }
 QPushButton { background: #203046; border: 1px solid #3a4b63; border-radius: 7px;
               color: #e8edf7; padding: 9px 14px; font-weight: 600; }
 QPushButton:hover { background: #2b3d55; }
@@ -167,6 +168,8 @@ class NetScopeWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.monitor_panel = MonitorPanel()
         self.tabs.addTab(self.monitor_panel, "Мониторинг LIVE")
+        self.investigation_panel = InvestigationPanel()
+        self.tabs.addTab(self.investigation_panel, "VPN / DNS / TCP")
         self.overview = QTextEdit()
         self.overview.setReadOnly(True)
         self.overview.setPlainText("Диагностика ещё не запущена. Нажмите «Начать диагностику».")
@@ -200,7 +203,8 @@ class NetScopeWindow(QMainWindow):
         """Do not destroy a running QThread when the window is closed."""
         scan_running = self.worker is not None and self.worker.isRunning()
         monitor_running = self.monitor_panel.worker is not None and self.monitor_panel.worker.isRunning()
-        if scan_running or monitor_running:
+        investigation_running = self.investigation_panel.worker is not None and self.investigation_panel.worker.isRunning()
+        if scan_running or monitor_running or investigation_running:
             event.ignore()
             if not self._closing:
                 self._closing = True
@@ -213,7 +217,8 @@ class NetScopeWindow(QMainWindow):
     def _close_when_idle(self) -> None:
         scan_running = self.worker is not None and self.worker.isRunning()
         monitor_running = self.monitor_panel.worker is not None and self.monitor_panel.worker.isRunning()
-        if scan_running or monitor_running:
+        investigation_running = self.investigation_panel.worker is not None and self.investigation_panel.worker.isRunning()
+        if scan_running or monitor_running or investigation_running:
             QTimer.singleShot(150, self._close_when_idle)
         else:
             self.close()

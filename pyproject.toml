@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netscope-win"
-version = "0.3.0"
-description = "Windows 11 network diagnostics, desktop UI and live ICMP monitoring"
+version = "0.4.0"
+description = "Windows 11 network diagnostics, desktop UI, live ICMP monitoring and VPN/DNS/TCP diagnostics"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["psutil>=6.0,<9"]
