@@ -1,56 +1,50 @@
-# NetScope v0.1 — Windows 11 Network Diagnostics
+# NetScope v0.2.0 — Windows 11 Network Diagnostics
 
-Read-only Python CLI that checks IPv4 ICMP, OS DNS resolution, HTTPS availability, Windows default IPv4 routes and network adapters. It optionally runs `tracert` and exports a structured JSON report.
+A read-only Windows desktop diagnostic app, with a preserved command-line interface. It checks ping, DNS, HTTPS certificate validation, routes, adapters, and optional traceroute. If Python rejects an HTTPS certificate, NetScope compares the result with Windows Schannel via `curl.exe` (with TLS validation ON).
 
-## Requirements
-- Windows 11
-- Python 3.11+ installed
-- VS Code + Microsoft Python extension (recommended)
+## Install and run (CMD in VS Code)
 
-## Installation (VS Code → Terminal → PowerShell)
+Requires Windows 11 and Python 3.11+.
 
-```powershell
-py -3 --version
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e '.[dev]'
+```cmd
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,gui]"
 .\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe -m netscope --json reports\diagnostic.json
+.\.venv\Scripts\python.exe -m netscope.gui
 ```
 
-If `py` is unavailable, use `python` in the first two commands. Using the `.venv\Scripts\python.exe` path avoids PowerShell script-execution policy issues.
+First-time checkout: run `py -3 -m venv .venv` before the install command.
+The GUI installation includes **PySide6**; it may take longer to install than the small CLI dependencies.
 
-## Examples
+### CLI still works
 
-```powershell
-.\.venv\Scripts\python.exe -m netscope --help
-.\.venv\Scripts\python.exe -m netscope --target 8.8.8.8 --domain example.com --json reports\test.json
+```cmd
 .\.venv\Scripts\python.exe -m netscope --trace --json reports\trace.json
+.\.venv\Scripts\python.exe -m netscope --domain example.com --https-url https://example.com/
 ```
 
-## Privacy & scope
+The GUI is stage 2's first milestone; continuous ping charts, history, automatic root-cause diagnosis and portable EXE packaging are **not implemented yet**.
 
-- Does **not** change DNS, VPN, routes, firewall, proxy, or other settings.
-- Does **not** require administrator privileges for basic checks.
-- Reports can contain private IPv4 addresses, adapter names and network routes. Do not post them publicly without redaction.
-- Internet access is necessary for public tests; network filters may block ICMP even while HTTPS works.
-- VPN detection is only a name-based hint, not proof of a live VPN tunnel.
-- A successful DNS lookup and HTTPS connection to `example.com` do not prove every service is reachable.
-- RTT is based on parsed Windows `ping.exe` replies; some locales could omit parsed timing.
+## What a TLS mismatch means
 
-## Project structure
+`curl.exe` on Windows uses Schannel, while Python `urllib` uses Python's SSL/OpenSSL stack. Their certificate-chain handling can differ. If Python fails certificate verification for a site while Windows curl succeeds, NetScope highlights it as a mismatch, **not** as a general internet outage. A missing intermediate certificate or a proxy/VPN that handles certificates differently may be involved; that does not prove interception or tampering. Never bypass TLS validation (`-k`, unverified SSL contexts).
+
+Windows may show different DNS responses than global resolvers. A successful DNS lookup against a named server does not prove that the request reached that resolver when a VPN or filtering rules are present.
+
+## Privacy and safety
+
+- Does not change DNS, VPN, firewall, routes or proxies.
+- Basic checks run without administrator rights.
+- Reports contain local IPs, network adapter names and routes; review before sharing.
+- VPN detection is based on interface names only, not definitive proof.
+- Low ICMP times do not guarantee fast communication with remote services when VPN tunneling or local redirection is active.
+- For Windows 11 only; tests can run on non-Windows for development.
+
+## Structure
 
 ```text
-src/netscope/cli.py           Console interface
-src/netscope/core/ping.py     ICMP testing
-src/netscope/core/dns.py      System DNS resolution
-src/netscope/core/http.py     HTTPS access
-src/netscope/core/routes.py   Default routes and optional tracert
-src/netscope/core/adapters.py psutil network adapters
-src/netscope/core/diagnose.py Aggregate report and explanations
-tests/                        Unit tests (no internet required)
+src/netscope/gui.py           PySide6 desktop app (worker QThread)
+src/netscope/cli.py           CLI
+src/netscope/core/           Shared diagnostic engine
+tests/                      Unit tests, no internet required
+.vscode/                    VS Code run configurations
 ```
-
-## Next milestones
-- GUI with PySide6, real-time charts and cancellation controls.
-- Compare diagnostics before/after VPN connection.
-- Configurable DNS servers / port probes / history, with explicit user consent and no automatic network changes.

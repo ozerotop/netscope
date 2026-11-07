@@ -11,8 +11,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="NetScope: read-only network diagnostics for Windows 11")
     parser.add_argument("--version", action="version", version=f"NetScope {__version__}")
     parser.add_argument("--target", default="1.1.1.1", help="IPv4 or host to ping/trace (default: 1.1.1.1)")
-    parser.add_argument("--domain", default="example.com", help="DNS name to resolve")
-    parser.add_argument("--https-url", default="https://example.com/", help="HTTPS URL to check")
+    parser.add_argument("--domain", default="www.python.org", help="DNS name to resolve")
+    parser.add_argument("--https-url", default="https://www.python.org/", help="HTTPS URL to check")
     parser.add_argument("--trace", action="store_true", help="Run tracert (slower)")
     parser.add_argument("--json", type=Path, default=None, help="Save report to this JSON file")
     args = parser.parse_args(argv)
@@ -30,6 +30,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"PING {ping['target']}: {ping['received']}/{ping['sent']} replies, {ping['loss_percent']}% loss, avg RTT: {ping['avg_ms'] if ping['avg_ms'] is not None else 'n/a'} ms")
     print(f"DNS: {'OK' if report['dns']['ok'] else 'FAIL'} | {report['dns']['detail']}")
     print(f"HTTPS: {'OK' if report['https']['ok'] else 'FAIL'} | {report['https']['detail']}")
+    if report.get("https_windows") is not None:
+        schannel = report["https_windows"]
+        print(f"Windows TLS (curl): {'OK' if schannel['ok'] else 'FAIL'} | {schannel['detail']}")
     print(f"Маршруты по умолчанию (IPv4): {len(report['default_routes'])} | {report['route_note']}")
     for route in report["default_routes"]:
         print(f"  gateway={route['gateway']} interface={route['interface']} metric={route['metric']}")

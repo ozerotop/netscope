@@ -2,7 +2,14 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "NetScope: Diagnose",
+      "name": "NetScope: GUI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "netscope.gui",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "NetScope: Diagnose (CLI)",
       "type": "debugpy",
       "request": "launch",
       "module": "netscope",
