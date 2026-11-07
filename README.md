@@ -1,10 +1,10 @@
-# NetScope v0.2.0 — Windows 11 Network Diagnostics
+# NetScope v0.3.0 — Windows 11 Network Diagnostics
 
-A read-only Windows desktop diagnostic app, with a preserved command-line interface. It checks ping, DNS, HTTPS certificate validation, routes, adapters, and optional traceroute. If Python rejects an HTTPS certificate, NetScope compares the result with Windows Schannel via `curl.exe` (with TLS validation ON).
+Read-only Windows 11 network diagnostics, with CLI, a PySide6 desktop UI and a **live ICMP monitoring** tab. Designed to help investigate flaky Wi-Fi, VPN and gaming connections without changing any network settings.
 
-## Install and run (CMD in VS Code)
+## Install / update in VS Code (CMD)
 
-Requires Windows 11 and Python 3.11+.
+Python 3.11+ and Windows 11 required. Open the repository's root directory.
 
 ```cmd
 .\.venv\Scripts\python.exe -m pip install -e ".[dev,gui]"
@@ -12,39 +12,44 @@ Requires Windows 11 and Python 3.11+.
 .\.venv\Scripts\python.exe -m netscope.gui
 ```
 
-First-time checkout: run `py -3 -m venv .venv` before the install command.
-The GUI installation includes **PySide6**; it may take longer to install than the small CLI dependencies.
+For a new clone, create the environment first: `py -3 -m venv .venv`.
 
-### CLI still works
+### Live monitoring (v0.3.0)
+
+1. Open **Мониторинг LIVE**.
+2. Enter **1–3** comma-separated IPv4 addresses or DNS hostnames (e.g. `1.1.1.1, 8.8.8.8, www.python.org`).
+3. Click **Старт мониторинга**, observe per-host min/avg/max RTT, replies and loss percentage, and watch the chart.
+4. Click **Стоп**, then **Экспорт CSV** to save the sample history.
+
+Each host is probed with **one Windows ICMP ping per cycle**. Probes run in parallel; new cycles start **at least one second apart**. If probes are slow, an interval may exceed one second. A blocked ICMP reply is reported as a missed probe, not evidence of a full internet outage. Graph uses the last 120 cycles; missing samples are red crosses (not 0 ms).
+
+Lifetime counters track the whole current session. Memory and CSV history are limited to the most recent **10,000 samples per host**; starting a new session clears the previous in-memory history. Export CSV before starting another monitoring session if the existing history matters. CSV includes timestamps and addresses; check before sharing.
+
+### Existing functions (v0.1–v0.2)
+
+- One-off ping, DNS, HTTPS (Python + Schannel fallback on TLS certificate mismatch), routes and network adapter diagnostics.
+- Optional tracert and JSON report export.
+- CLI still works:
 
 ```cmd
 .\.venv\Scripts\python.exe -m netscope --trace --json reports\trace.json
-.\.venv\Scripts\python.exe -m netscope --domain example.com --https-url https://example.com/
 ```
 
-The GUI is stage 2's first milestone; continuous ping charts, history, automatic root-cause diagnosis and portable EXE packaging are **not implemented yet**.
+### Privacy and safety
 
-## What a TLS mismatch means
+- Read-only checks. No administrator rights, no DNS/firewall/route/VPN modifications, no TLS bypass.
+- Subprocesses use argument arrays, never `shell=True`; host inputs are validated.
+- ICMP results may be distorted by VPN/TUN routing and filtering. A 0.5ms ping to `1.1.1.1` through a tunnel is **not proof** of remote server latency.
+- Tests run offline with fake samples.
+- Monitoring is stopped cleanly before GUI exit. Running individual one-off scans are also allowed to finish before exit.
 
-`curl.exe` on Windows uses Schannel, while Python `urllib` uses Python's SSL/OpenSSL stack. Their certificate-chain handling can differ. If Python fails certificate verification for a site while Windows curl succeeds, NetScope highlights it as a mismatch, **not** as a general internet outage. A missing intermediate certificate or a proxy/VPN that handles certificates differently may be involved; that does not prove interception or tampering. Never bypass TLS validation (`-k`, unverified SSL contexts).
-
-Windows may show different DNS responses than global resolvers. A successful DNS lookup against a named server does not prove that the request reached that resolver when a VPN or filtering rules are present.
-
-## Privacy and safety
-
-- Does not change DNS, VPN, firewall, routes or proxies.
-- Basic checks run without administrator rights.
-- Reports contain local IPs, network adapter names and routes; review before sharing.
-- VPN detection is based on interface names only, not definitive proof.
-- Low ICMP times do not guarantee fast communication with remote services when VPN tunneling or local redirection is active.
-- For Windows 11 only; tests can run on non-Windows for development.
-
-## Structure
+## Code layout
 
 ```text
-src/netscope/gui.py           PySide6 desktop app (worker QThread)
-src/netscope/cli.py           CLI
-src/netscope/core/           Shared diagnostic engine
-tests/                      Unit tests, no internet required
-.vscode/                    VS Code run configurations
+src/netscope/gui.py            Existing diagnostic UI + Live monitoring tab
+src/netscope/monitor_ui.py     Live monitoring worker, chart, table & CSV export UI
+src/netscope/core/monitor.py  Validations, ICMP probe and session statistics
+src/netscope/core/           Existing diagnostic modules
+src/netscope/cli.py           Existing CLI
+ tests/                        Offline unit tests
 ```

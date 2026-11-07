@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtCore import QThread, Signal, Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QFileDialog, QFrame, QGridLayout, QGroupBox,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMainWindow, QMessageBox,
@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from netscope import __version__
 from netscope.core.diagnose import diagnose
+from netscope.monitor_ui import MonitorPanel
 
 
 STYLES = """
@@ -102,6 +103,7 @@ class NetScopeWindow(QMainWindow):
         self.setMinimumSize(820, 620)
         self.report: dict | None = None
         self.worker: ScanWorker | None = None
+        self._closing = False
 
         root = QWidget()
         self.setCentralWidget(root)
@@ -163,6 +165,8 @@ class NetScopeWindow(QMainWindow):
         outer.addLayout(summary)
 
         self.tabs = QTabWidget()
+        self.monitor_panel = MonitorPanel()
+        self.tabs.addTab(self.monitor_panel, "Мониторинг LIVE")
         self.overview = QTextEdit()
         self.overview.setReadOnly(True)
         self.overview.setPlainText("Диагностика ещё не запущена. Нажмите «Начать диагностику».")
@@ -191,6 +195,28 @@ class NetScopeWindow(QMainWindow):
         privacy.setStyleSheet("color:#a5b3c7;font-size:9pt;")
         outer.addWidget(privacy)
         self.statusBar().showMessage("Готов к диагностике")
+
+    def closeEvent(self, event) -> None:
+        """Do not destroy a running QThread when the window is closed."""
+        scan_running = self.worker is not None and self.worker.isRunning()
+        monitor_running = self.monitor_panel.worker is not None and self.monitor_panel.worker.isRunning()
+        if scan_running or monitor_running:
+            event.ignore()
+            if not self._closing:
+                self._closing = True
+                self.monitor_panel.stop_monitor()
+                self.statusBar().showMessage("Завершаем сетевые проверки перед закрытием…")
+                QTimer.singleShot(150, self._close_when_idle)
+        else:
+            event.accept()
+
+    def _close_when_idle(self) -> None:
+        scan_running = self.worker is not None and self.worker.isRunning()
+        monitor_running = self.monitor_panel.worker is not None and self.monitor_panel.worker.isRunning()
+        if scan_running or monitor_running:
+            QTimer.singleShot(150, self._close_when_idle)
+        else:
+            self.close()
 
     @staticmethod
     def _setup_table(table: QTableWidget) -> None:
