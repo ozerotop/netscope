@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "NetScope: Diagnose",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "netscope",
+      "console": "integratedTerminal",
+      "args": ["--json", "reports/debug.json"]
+    }
+  ]
+}
