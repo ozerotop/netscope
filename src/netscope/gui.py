@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -24,6 +25,8 @@ from netscope.core.diagnose import diagnose
 from netscope.monitor_ui import MonitorPanel
 from netscope.investigate_ui import InvestigationPanel
 from netscope.analysis_ui import AnalysisPanel
+from netscope.history_ui import HistoryPanel
+from netscope.core.history import HistoryStore
 
 
 STYLES = """
@@ -174,6 +177,17 @@ class NetScopeWindow(QMainWindow):
         self.analysis_panel = AnalysisPanel()
         self.investigation_panel.report_ready.connect(self.analysis_panel.set_latest_report)
         self.tabs.addTab(self.analysis_panel, "Автоанализ")
+        try:
+            history_store = HistoryStore()
+            history_error = ""
+        except (OSError, sqlite3.Error) as exc:
+            history_store = None
+            history_error = str(exc)
+        self.history_panel = HistoryPanel(history_store, history_error)
+        self.history_panel.analysis_requested.connect(self.open_historical_analysis)
+        self.history_panel.snapshot_requested.connect(self.open_historical_snapshot)
+        self.investigation_panel.report_ready.connect(self.history_panel.record_report)
+        self.tabs.addTab(self.history_panel, "История")
         self.overview = QTextEdit()
         self.overview.setReadOnly(True)
         self.overview.setPlainText("Диагностика ещё не запущена. Нажмите «Начать диагностику».")
@@ -202,6 +216,18 @@ class NetScopeWindow(QMainWindow):
         privacy.setStyleSheet("color:#a5b3c7;font-size:9pt;")
         outer.addWidget(privacy)
         self.statusBar().showMessage("Готов к диагностике")
+
+    def open_historical_analysis(self, report: dict) -> None:
+        self.analysis_panel.set_latest_report(report)
+        self.tabs.setCurrentWidget(self.analysis_panel)
+
+    def open_historical_snapshot(self, target: str, report: dict) -> None:
+        try:
+            self.analysis_panel.set_snapshot(target, report)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Ошибка отчёта", str(exc))
+            return
+        self.tabs.setCurrentWidget(self.analysis_panel)
 
     def closeEvent(self, event) -> None:
         """Do not destroy a running QThread when the window is closed."""
@@ -274,6 +300,7 @@ class NetScopeWindow(QMainWindow):
 
     def show_report(self, report: dict) -> None:
         self.report = report
+        self.history_panel.record_report(report)
         ping = report["ping"]
         self.cards["ping"].set_value(
             f"{ping['loss_percent']}% потерь",

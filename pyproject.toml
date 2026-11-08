@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netscope-win"
-version = "0.5.0"
-description = "Windows 11 network diagnostics with GUI, VPN/DNS/TCP checks and rule-based analysis"
+version = "0.6.0"
+description = "Windows 11 network diagnostics with GUI, VPN/DNS/TCP checks and rule-based analysis and SQLite history"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["psutil>=6.0,<9"]
@@ -13,6 +13,7 @@ dependencies = ["psutil>=6.0,<9"]
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
 gui = ["PySide6>=6.7,<7"]
+build = ["PyInstaller>=6.10,<7"]
 
 [project.scripts]
 netscope = "netscope.cli:main"

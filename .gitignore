@@ -8,3 +8,12 @@ reports/*.json
 reports/*.txt
 !reports/.gitkeep
 reports/*.csv
+
+# Local history, packaging and build artifacts
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+build/
+dist/
+*.spec

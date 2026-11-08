@@ -156,6 +156,13 @@ class AnalysisPanel(QWidget):
         if data is not None:
             self._set_snapshot(target, data)
 
+    def set_snapshot(self, target: str, data: dict) -> None:
+        """Accept a stored advanced report as a before/after snapshot."""
+        if target not in ("before", "after"):
+            raise ValueError("Неизвестная сторона сравнения.")
+        validate_investigation(data)
+        self._set_snapshot(target, data)
+
     def _set_snapshot(self, target: str, data: dict) -> None:
         label = str(data.get("created_utc", "время неизвестно"))
         if target == "before":
