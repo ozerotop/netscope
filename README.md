@@ -1,87 +1,73 @@
-# NetScope v0.4.0 — Windows 11 Network Diagnostics
+# NetScope v0.5.0 — Windows 11 Network Diagnostics
 
-Read-only Windows network diagnostics: CLI, PySide6 GUI, live ICMP monitoring, and **VPN / DNS / IPv4 route / TCP investigation**. NetScope does **not** change DNS, routes, firewall, VPN or system certificates.
+Read-only Windows 11 network diagnostics with a PySide6 desktop interface, live ICMP monitor, VPN/DNS/TCP investigation, and a **rule-based auto-analysis** of investigation results.
 
-## Updating an existing v0.3.0 installation (Windows CMD)
+NetScope does **not** change DNS, routes, firewall, VPN configuration or system certificates. It does not turn off TLS verification. No external AI model or cloud service is used for recommendations.
 
-1. Commit or stash local work before replacing project files.
-2. Extract `NetScope_v0.4.0_Update.zip` into the repository root with file replacement.
-3. Run from the repository root:
+## Update from v0.4.0 (Windows CMD)
+
+1. Save/commit your own modifications first and exit NetScope GUI.
+2. Extract `NetScope_v0.5.0_Update.zip` **into the existing repository root**, replacing matching files (do not extract as another nested project).
+3. In CMD from the repository root:
 
 ```cmd
+cd /d C:\Dmitri\vs\github\netscope
 .\.venv\Scripts\python.exe -m pip install -e ".[dev,gui]"
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m netscope.gui
 ```
 
-Expected automated result from the release build: **41 passed**. GUI behaviour on your Windows environment still needs a manual smoke test.
+Expected local development-suite result: **75 passed**. This suite uses mock inputs for network functions; GUI needs to be verified on Windows 11. On a fresh machine use `py -3 -m venv .venv` before pip install.
 
-For a fresh clone, first create an environment with `py -3 -m venv .venv`.
+## New: «Автоанализ» tab
 
-## New: VPN / DNS / TCP tab
+- Run **VPN / DNS / TCP → Проверить** as usual. The analysis tab is automatically populated with observations, confidence in the observation, *possible* explanations, and recommended checks.
+- To capture a **before** snapshot, open Auto-analysis and click **Текущий → ДО**.
+- Change the VPN/network manually outside NetScope, then run **VPN / DNS / TCP → Проверить** again, switch to Auto-analysis and click **Текущий → ПОСЛЕ**. Click **Сравнить**.
+- Alternatively, save two investigation JSON reports from v0.4+ and load **Открыть ДО** / **Открыть ПОСЛЕ** directly.
+- A comparison only compares DNS answers for the same domain and shared resolvers; route destination and TCP host/port must also match. Different tests are explicitly marked *not comparable*.
 
-Open **VPN / DNS / TCP**, then run the checks with these suggested safe defaults:
+**Important:** A different route, a changed DNS response or a TCP connection appearing after changing VPN **does not prove causality**. VPN-like adapters are only identified by name/state. A very low ping via a virtual adapter may not represent RTT to the external host. DNS divergence alone is not proof of manipulation. TCP success does not verify game UDP or voice services.
 
-| Field | Default | Meaning |
-|---|---|---|
-| DNS domain | `www.python.org` | Compare IPv4 A records |
-| DNS servers | `1.1.1.1, 8.8.8.8` | Direct **unencrypted** UDP/53 DNS requests (up to 3 addresses) |
-| Route destination | `1.1.1.1` | Estimate the best matching Windows IPv4 route |
-| TCP host | `www.python.org` | Destination to test |
-| TCP port | `443` | One TCP connection attempt, **not** a port scan |
+## New: offline CLI auto-analysis
 
-Results are shown in five subtabs: Findings, DNS comparison, Route selection, VPN-like adapters, and TCP. Use **Save JSON** for a detailed report. Reports can contain sensitive details about your network: check carefully before sharing. Ignore files in `reports/` when committing.
-
-**Caution: these are diagnostic hints, not definitive verdicts.**
-
-- Windows system DNS resolution (`getaddrinfo`) may use cache, hosts or VPN policy and can differ from direct UDP DNS queries. UDP/53 may also be blocked or redirected. Different A records are common with CDNs and **do not prove** DNS tampering.
-- The route is inferred from the active `route print -4` table, with longest-prefix match, then lowest displayed metric. Equal-cost routes are flagged. Windows interface policy and VPN adapters may affect the actual path.
-- Network adapters are tagged as potential VPN/TUN based **only on their names**, not inspection of whether a VPN is carrying traffic.
-- A successful TCP connection does **not** test UDP traffic, a game's voice-chat protocol, login or firewall policies for other applications.
-- The tool does not disable TLS certificate verification or perform any network reconfiguration.
-
-### New command-line investigation
+After exporting **VPN / DNS / TCP** JSON:
 
 ```cmd
-.\.venv\Scripts\python.exe -m netscope.investigate --json reports\advanced.json
+.\.venv\Scripts\python.exe -m netscope.analyze --input reports\netscope_investigation.json
 ```
 
-With explicit parameters:
+Compare two saved reports:
 
 ```cmd
-.\.venv\Scripts\python.exe -m netscope.investigate --domain example.com --dns-servers 1.1.1.1,8.8.8.8 --route-ip 1.1.1.1 --tcp-host www.python.org --tcp-port 443
+.\.venv\Scripts\python.exe -m netscope.analyze --before reports\before.json --after reports\after.json
 ```
 
-## Previous features, retained
+Optionally add `--json reports\analysis.json` to save analysis data. Reports are local, limited to 2 MB when imported via CLI/GUI, and never uploaded automatically. The analyzer works offline after the report is collected.
 
-- v0.1: ping, DNS, HTTPS, adapter inventory, route summary and optional traceroute, CLI with JSON export.
-- v0.2: PySide6 dark GUI, Windows Schannel comparison when Python certificate verification fails (no TLS bypass).
-- v0.3: **Мониторинг LIVE** for up to three hosts, per-target latency statistics, chart and CSV export.
+## Existing commands and features
 
-To run a basic CLI scan:
+- Basic one-time scan: `python -m netscope --trace --json reports\trace.json`.
+- Advanced diagnostic CLI: `python -m netscope.investigate --json reports\advanced.json`.
+- GUI: `python -m netscope.gui`.
+- Live monitor: three targets, latency graph, packet loss and CSV export.
+- Advanced diagnostics: Windows system DNS vs UDP/53, route-table estimate, name-based VPN candidates and one TCP connection test.
+- TLS: Python OpenSSL and (upon certificate errors) Windows Schannel comparison, **without disabling certificate validation**.
 
-```cmd
-.\.venv\Scripts\python.exe -m netscope --trace --json reports\trace.json
-```
+## Privacy and GitHub
 
-## Project structure
+Diagnostic reports may contain IPs, network adapter names, domains and VPN metadata. The project's `.gitignore` excludes `reports/*.json` and `reports/*.csv`, but saved reports **elsewhere** can still be tracked: inspect `git status` before `git add .`. Do not commit `.venv` or any private reports.
+
+## Relevant code
 
 ```text
-src/netscope/gui.py                Main PySide6 window and tabs
-src/netscope/investigate_ui.py     VPN / DNS / route / TCP UI (QThread worker)
-src/netscope/investigate.py        Advanced diagnostics CLI
-src/netscope/core/investigate.py   Advanced orchestration, cautious findings
-src/netscope/core/dns_compare.py   System resolver + UDP DNS (A only)
-src/netscope/core/route_analysis.py   Active route parsing and estimated selection
-src/netscope/core/tcp_probe.py     Single TCP connection check
-src/netscope/monitor_ui.py        Live ICMP monitoring UI
-src/netscope/core/monitor.py      Monitoring engine and CSV export
-src/netscope/core/               Existing diagnosis modules
-tests/                            Offline, mocked automated tests
+src/netscope/gui.py               Main PySide6 desktop interface
+src/netscope/analysis_ui.py       New auto-analysis and before/after tabs
+src/netscope/analyze.py           New offline CLI entrypoint
+src/netscope/core/insights.py     New cautious rule engine
+src/netscope/core/report_diff.py  New report comparison
+src/netscope/investigate_ui.py    Advanced investigation, emits report to analysis tab
+src/netscope/core/investigate.py  VPN/DNS/route/TCP data collection
+src/netscope/monitor_ui.py       Live ICMP UI
+src/netscope/core/monitor.py     Live monitoring core
 ```
-
-## Diagnostic reference
-
-- [Microsoft: Windows route metric / longest prefix](https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-tcpip-interfaces-interface-routes-route-metric)
-- [Microsoft: VPN name resolution and NRPT](https://learn.microsoft.com/en-us/windows/security/operating-system-security/network-security/vpn/vpn-name-resolution)
-- [Microsoft: Resolve-DnsName vs nslookup](https://techcommunity.microsoft.com/blog/networkingblog/resolve-dnsname-vs-nslookup-in-windows/4483858)

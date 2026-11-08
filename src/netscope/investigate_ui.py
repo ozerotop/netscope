@@ -49,6 +49,7 @@ def populate(table: QTableWidget, rows: list[list[str]]) -> None:
 
 
 class InvestigationPanel(QWidget):
+    report_ready = Signal(object)
     def __init__(self) -> None:
         super().__init__()
         self.worker: InvestigationWorker | None = None
@@ -152,6 +153,7 @@ class InvestigationPanel(QWidget):
 
     def show_report(self, report: dict) -> None:
         self.report = report
+        self.report_ready.emit(report)
         self.summary.setPlainText("РЕЗУЛЬТАТЫ РАСШИРЕННОЙ ДИАГНОСТИКИ\n\n" + "\n\n".join("• " + f for f in report["findings"]))
         populate(self.dns_table, [[r["server"], "OK" if r["ok"] else "Нет ответа / ошибка",
                                    ", ".join(r["ipv4"]) or "—", str(r["duration_ms"]), r["detail"]]

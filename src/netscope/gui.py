@@ -23,6 +23,7 @@ from netscope import __version__
 from netscope.core.diagnose import diagnose
 from netscope.monitor_ui import MonitorPanel
 from netscope.investigate_ui import InvestigationPanel
+from netscope.analysis_ui import AnalysisPanel
 
 
 STYLES = """
@@ -170,6 +171,9 @@ class NetScopeWindow(QMainWindow):
         self.tabs.addTab(self.monitor_panel, "Мониторинг LIVE")
         self.investigation_panel = InvestigationPanel()
         self.tabs.addTab(self.investigation_panel, "VPN / DNS / TCP")
+        self.analysis_panel = AnalysisPanel()
+        self.investigation_panel.report_ready.connect(self.analysis_panel.set_latest_report)
+        self.tabs.addTab(self.analysis_panel, "Автоанализ")
         self.overview = QTextEdit()
         self.overview.setReadOnly(True)
         self.overview.setPlainText("Диагностика ещё не запущена. Нажмите «Начать диагностику».")
